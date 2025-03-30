@@ -125,7 +125,7 @@ export function versions(reload: boolean = false): Promise<VersionInfo[]> {
 	versionCaches = null;
 	if (!versionsPromise) {
 		versionsPromise = new Promise<VersionInfo[]>((resolve, reject) => {
-			exec('egret versions').then(data => {
+			exec('egret list').then(data => {
 				const versionInfos: VersionInfo[] = [];
 				if (data) {
 					const versions: string[] = data.split('\n');

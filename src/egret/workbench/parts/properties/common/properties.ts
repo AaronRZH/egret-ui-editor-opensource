@@ -231,11 +231,11 @@ export function setPropertyNumPro(nodes: IObject[], prop: string, value: string 
 		node.setProperty(prop, curValue);
 		if (isNum) {
 			if (prop === 'width') {
-				if (node.getInstance()['percentWidth'] !== NaN) {
+				if (!isNaN(node.getInstance()['percentWidth'])) {
 					node.setProperty('percentWidth', null);
 				}
 			} else if (prop === 'height') {
-				if (node.getInstance()['percentHeight'] !== NaN) {
+				if (!isNaN(node.getInstance()['percentHeight'])) {
 					node.setProperty('percentHeight', null);
 				}
 			}

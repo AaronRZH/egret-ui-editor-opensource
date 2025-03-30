@@ -105,7 +105,7 @@ export class ThemeEUI implements ITheme {
 				if(text){
 					skinClassName = parseClassName(text);
 					this.skinFileCache[path] = {
-						skinClassName: skinClassName,
+						skinClassName: skinClassName || skinFileName,
 						mTime: mtime
 					};
 				}else{

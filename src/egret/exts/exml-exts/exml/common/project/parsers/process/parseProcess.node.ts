@@ -23,37 +23,28 @@ class ParserProcess extends NodeProcess implements IParserProcess {
 	 * 初始化
 	 * @param propertiesPath 
 	 */
-	public initProcess(propertiesPath: string, uiLib: string, workspace: string, parseFolders: string[]): Promise<void> {
+	public async initProcess(propertiesPath: string, uiLib: string, workspace: string, parseFolders: string[]): Promise<void> {
 		this.currentParsedFolders = parseFolders;
-		return this.initProperty(propertiesPath).then(propertiesMap => {
-			this.properties = propertiesMap;
-			this.tsParser = new TsParser();
-			if (uiLib == 'eui') {
-				this.exmlParser = new EUIParser(URI.file(workspace));
-			} else {
-				this.exmlParser = new GUIParser(URI.file(workspace));
+		const propertiesMap = await this.initProperty(propertiesPath);
+		this.properties = propertiesMap;
+		this.tsParser = new TsParser();
+		if (uiLib == 'eui') {
+			this.exmlParser = new EUIParser(URI.file(workspace));
+		} else {
+			this.exmlParser = new GUIParser(URI.file(workspace));
+		}
+		let tasks: Promise<ISelectedStat[]>[] = [];
+		for (const item of parseFolders) {
+			tasks.push(this.getFiles(item));
+		}
+		const result = await Promise.all(tasks);
+		result.forEach(fileStats => {
+			for (const stat of fileStats) {
+				this.addFile(stat.resource);
 			}
-			let tasks: Promise<ISelectedStat[]>[] = [];
-			for (const item of parseFolders) {
-				tasks.push(this.getFiles(item));
-			}
-			return Promise.all(tasks).then((result) => {
-				result.forEach(fileStats => {
-					for (const stat of fileStats) {
-						this.addFile(stat.resource);
-					}
-				});
-				this.doFilesChanged('mix');
-				console.log('ParserProcess Inited');
-			});
-			// return this.select(workspace, ['.exml', '.ts'], null, ['node_modules', '.git', '.DS_Store']).then(fileStats => {
-			// 	for (let i = 0; i < fileStats.length; i++) {
-			// 		this.addFile(fileStats[i].resource);
-			// 	}
-			// 	this.doFilesChanged('mix');
-			// 	console.log('ParserProcess Inited');
-			// });
 		});
+		await this.doFilesChanged('mix');
+		console.log('ParserProcess Inited');
 	}
 
 	private getFiles(folder: string): Promise<ISelectedStat[]> {
@@ -71,7 +62,7 @@ class ParserProcess extends NodeProcess implements IParserProcess {
 	}
 
 	// 可能增加或移除同一个文件夹多次，此处只考虑增加的文件夹，对于移除的则不做处理
-	public changeParseFolders(folders: string[]): Promise<void> {
+	public async changeParseFolders(folders: string[]): Promise<void> {
 		let newFolders: string[] = [];
 		for (const item of folders) {
 			if (!this.isFolderParsed(item)) {
@@ -85,14 +76,13 @@ class ParserProcess extends NodeProcess implements IParserProcess {
 				console.log('new parsed folder', item);
 				tasks.push(this.getFiles(item));
 			}
-			return Promise.all(tasks).then((result) => {
-				result.forEach(fileStats => {
-					for (const stat of fileStats) {
-						this.addFile(stat.resource);
-					}
-				});
-				this.doFilesChanged('mix');
+			const result = await Promise.all(tasks);
+			result.forEach(fileStats => {
+				for (const stat of fileStats) {
+					this.addFile(stat.resource);
+				}
 			});
+			await this.doFilesChanged('mix');
 		}
 	}
 
@@ -148,9 +138,8 @@ class ParserProcess extends NodeProcess implements IParserProcess {
 			}
 		}
 		if (actualChanges.length > 0) {
-			this.doFilesChanged(changeType);
+			await this.doFilesChanged(changeType);
 		}
-		return Promise.resolve(void 0);
 	}
 
 	private initProperty(propertiesPath: string): Promise<any> {
@@ -287,9 +276,9 @@ class ParserProcess extends NodeProcess implements IParserProcess {
 		}
 	}
 
-	private doFilesChanged(type: ClassChangedType): void {
+	private async doFilesChanged(type: ClassChangedType): Promise<void> {
 		if (this.tsFileChanged) {
-			this.tsParser.fileChanged(this.tsAdds, this.tsModifies, this.tsDelete);
+			await this.tsParser.fileChanged(this.tsAdds, this.tsModifies, this.tsDelete);
 			this.tsAdds = [];
 			this.tsModifies = [];
 			this.tsDelete = [];

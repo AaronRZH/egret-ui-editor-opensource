@@ -88,7 +88,7 @@ export class OperationBrowserService implements IOperationBrowserService {
 				});
 			});
 			//对全选做特殊处理
-			Mousetrap.bindGlobal('ctrl+a', (e, combo) => {
+			Mousetrap.bind('ctrl+a', (e, combo) => {
 				this.executeCommand(SystemCommands.SELECT_ALL);
 			});
 			// 修复 https://github.com/egret-labs/egret-ui-editor-opensource/issues/67
@@ -150,11 +150,7 @@ export class OperationBrowserService implements IOperationBrowserService {
 		}
 		this.currentKeybingdingMap[command] = { key, type, global, name, description };
 
-		if (global) {
-			Mousetrap.bindGlobal(key.split(' '), (e, combo) => this.keyTigger_handler(e, combo), type);
-		} else {
-			Mousetrap.bind(key.split(' '), (e, combo) => this.keyTigger_handler(e, combo), type);
-		}
+		Mousetrap.bind(key.split(' '), (e, combo) => this.keyTigger_handler(e, combo), type);
 	}
 
 	/**

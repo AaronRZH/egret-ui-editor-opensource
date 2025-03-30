@@ -456,7 +456,7 @@ export class SaveActiveOperation implements IOperation {
 		const currentEditor = this.editorService.getActiveEditor();
 		if (currentEditor && currentEditor.input) {
 			if ('syncModelData' in currentEditor) {
-				await (currentEditor as IMultiPageEditor).syncModelData();
+				await (currentEditor as any).syncModelData();
 			}
 			return this.fileModelService.save(currentEditor.input.getResource());
 		}
@@ -490,7 +490,7 @@ export class SaveAllOperation implements IOperation {
 		for (let i = 0; i < editors.length; i++) {
 			const editor = editors[i];
 			if ('syncModelData' in editor) {
-				await (editor as IMultiPageEditor).syncModelData();
+				await (editor as any).syncModelData();
 			}
 		}
 		return this.fileModelService.saveAll();

@@ -23,7 +23,7 @@ import { KeyCode } from 'vs/base/common/keyCodes';
 import { Event, Emitter } from 'vs/base/common/event';
 import { DataTransfers, StaticDND, IDragAndDropData } from 'vs/base/browser/dnd';
 import { DefaultTreestyler } from './treeDefaults';
-import { Delayer, timeout } from 'vs/base/common/async';
+import { Delayer, ignoreErrors, timeout } from 'vs/base/common/async';
 
 export interface IRow {
 	element: HTMLElement | null;
@@ -415,7 +415,7 @@ export class TreeView extends HeightMap {
 	private treeStyler: _.ITreeStyler;
 	private rowsContainer: HTMLElement;
 	private scrollableElement: ScrollableElement;
-	private msGesture: MSGesture | undefined;
+	private msGesture: any | undefined;
 	private lastPointerType: string = '';
 	private lastClickTimeStamp: number = 0;
 
@@ -557,11 +557,11 @@ export class TreeView extends HeightMap {
 			this.viewListeners.push(DOM.addDisposableListener(this.wrapper, 'MSGestureTap', (e) => this.onMsGestureTap(e)));
 
 			// these events come too fast, we throttle them
-			this.viewListeners.push(DOM.addDisposableThrottledListener<IThrottledGestureEvent, MSGestureEvent>(this.wrapper, 'MSGestureChange', (e) => this.onThrottledMsGestureChange(e), (lastEvent: IThrottledGestureEvent, event: MSGestureEvent): IThrottledGestureEvent => {
+			this.viewListeners.push(DOM.addDisposableThrottledListener<IThrottledGestureEvent, MouseEvent>(this.wrapper, 'MSGestureChange', (e) => this.onThrottledMsGestureChange(e), (lastEvent: IThrottledGestureEvent, event: MouseEvent): IThrottledGestureEvent => {
 				event.stopPropagation();
 				event.preventDefault();
 
-				let result = { translationY: event.translationY, translationX: event.translationX };
+				let result = { translationY: (event as any).translationY, translationX: (event as any).translationX };
 
 				if (lastEvent) {
 					result.translationY += lastEvent.translationY;
@@ -633,7 +633,7 @@ export class TreeView extends HeightMap {
 
 	private setupMSGesture(): void {
 		if ((<any>window).MSGesture) {
-			this.msGesture = new MSGesture();
+			this.msGesture = new (<any>window).MSGesture();
 			setTimeout(() => this.msGesture!.target = this.wrapper, 100); // TODO@joh, TODO@IETeam
 		}
 	}
@@ -1568,7 +1568,7 @@ export class TreeView extends HeightMap {
 
 	// MS specific DOM Events
 
-	private onMsPointerDown(event: MSPointerEvent): void {
+	private onMsPointerDown(event: PointerEvent): void {
 		if (!this.msGesture) {
 			return;
 		}
@@ -1594,7 +1594,7 @@ export class TreeView extends HeightMap {
 		this.scrollTop -= event.translationY;
 	}
 
-	private onMsGestureTap(event: MSGestureEvent): void {
+	private onMsGestureTap(event: MouseEvent): void {
 		(<any>event).initialTarget = document.elementFromPoint(event.clientX, event.clientY);
 		this.onTap(<any>event);
 	}

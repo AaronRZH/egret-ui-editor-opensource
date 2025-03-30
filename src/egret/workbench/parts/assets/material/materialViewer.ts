@@ -158,7 +158,7 @@ export class MaterialSorter implements ISorter {
 	}
 
 	private extractNameAndExtension(str?: string): [string, string] {
-		const match = str ? FileNameMatch.exec(str) : [] as RegExpExecArray;
+		const match = str ? FileNameMatch.exec(str) : [];
 
 		return [(match && match[1]) || '', (match && match[3]) || ''];
 	}

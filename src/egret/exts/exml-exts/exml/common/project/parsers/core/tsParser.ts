@@ -1,5 +1,6 @@
 import * as ts from 'typescript';
 import * as fs from 'fs';
+import * as fsExtra from 'fs-extra';
 import { ClassNode, Prop } from '../../syntaxNodes';
 import { TempClassData } from './commons';
 import { isIgnore } from './ignores';
@@ -121,32 +122,65 @@ export class TsParser implements IDisposable {
 	private files: ts.Map<{ version: number }>;
 	private servicesHost: ts.LanguageServiceHost;
 	private services: ts.LanguageService;
+
+	private async getFileSnapshot(fileName: string) {
+		if(isIgnore(fileName)){
+			return undefined;
+		}
+		if (!await fsExtra.pathExists(fileName)) {
+			return undefined;
+		}
+		let stat:fs.Stats = null;
+		try {
+			stat = await fsExtra.stat(fileName);
+		} catch (error) {
+			return undefined;
+		}
+		if(!stat){
+			return undefined;
+		}
+		if(!stat.isFile()){
+			return undefined;
+		}
+		let content:string = '';
+		try {
+			content = await fsExtra.readFile(fileName,'utf8');
+		} catch (error) {
+			return undefined;
+		}
+		if (this.files[fileName]) {
+			this.files[fileName].snapshot = ts.ScriptSnapshot.fromString(content);
+		}
+	}
 	/**
 	 * 文件变化
 	 * @param adds 
 	 * @param modifies 
 	 * @param deletes 
 	 */
-	public fileChanged(adds: string[], modifies: string[], deletes: string[]): void {
+	public async fileChanged(adds: string[], modifies: string[], deletes: string[]): Promise<void> {
 		const mPaths: string[] = modifies;
 		const dPaths: string[] = deletes;
 		const cPaths: string[] = adds;
+		const promises: Promise<void>[] = [];
 		if (!this.files) {
 			this.files = Object.create(null);
 		}
-		for (let i = 0; i < cPaths.length; i++) {
-			if (this.files[cPaths[i]]) {
-				this.files[cPaths[i]].version++;
+		for (let cPath of cPaths) {
+			if (this.files[cPath]) {
+				this.files[cPath].version++;
 			} else {
-				this.files[cPaths[i]] = { version: 0 };
+				this.files[cPath] = { version: 0 };
 			}
+			promises.push(this.getFileSnapshot(cPath));
 		}
-		for (let i = 0; i < mPaths.length; i++) {
-			if (this.files[mPaths[i]]) {
-				this.files[mPaths[i]].version++;
+		for (let mPath of mPaths) {
+			if (this.files[mPath]) {
+				this.files[mPath].version++;
 			} else {
-				this.files[mPaths[i]] = { version: 0 };
+				this.files[mPath] = { version: 0 };
 			}
+			promises.push(this.getFileSnapshot(mPath));
 		}
 		// delete
 		for (const key in this.files) {
@@ -155,6 +189,9 @@ export class TsParser implements IDisposable {
 					delete this.files[key];
 				}
 			}
+		}
+		if (promises.length > 0) {
+			await Promise.all(promises);
 		}
 		if (!this.servicesHost) {
 			this.servicesHost = {
@@ -167,35 +204,23 @@ export class TsParser implements IDisposable {
 				},
 				getScriptVersion: (fileName) => this.files[fileName] && this.files[fileName].version.toString(),
 				getScriptSnapshot: (fileName) => {
-					if(isIgnore(fileName)){
-						return undefined;
+					if (!this.files || !this.files[fileName]) {
+						return;
 					}
-					if (!fs.existsSync(fileName)) {
-						return undefined;
-					}
-					let stat:fs.Stats = null;
-					try {
-						stat = fs.statSync(fileName);
-					} catch (error) {
-						return undefined;
-					}
-					if(!stat){
-						return undefined;
-					}
-					if(!stat.isFile()){
-						return undefined;
-					}
-					let content:string = '';
-					try {
-						content = fs.readFileSync(fileName,'utf8');
-					} catch (error) {
-						return undefined;
-					}
-					return ts.ScriptSnapshot.fromString(content);
+					return this.files[fileName].snapshot;
 				},
 				getCurrentDirectory: () => process.cwd(),
 				getCompilationSettings: () => options,
 				getDefaultLibFileName: (options) => ts.getDefaultLibFilePath(options),
+				readFile: (path: string, encoding?: string) => {
+				    if (!this.files || !this.files[path]) {
+						return;
+					}
+					return this.files[path].snapshot;
+				},
+				fileExists: (path: string) => {
+					return this.files && this.files[path];
+				}
 			};
 			this.services = ts.createLanguageService(this.servicesHost, ts.createDocumentRegistry());
 		}
@@ -208,7 +233,6 @@ export class TsParser implements IDisposable {
 	 */
 	public getClassDataMap(): { [className: string]: TempClassData } {
 		if (this.cacheStamp !== this.currentStamp) {
-			this.services.getProgram();
 			this.tmpClassMap = {};
 			const program = this.services.getProgram();
 			const sourceCodes = program.getSourceFiles();

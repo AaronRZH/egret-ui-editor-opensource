@@ -81,7 +81,7 @@ class CommentWalker extends Lint.RuleWalker {
 				var comment = jsDoc.comment;
 				if (!comment) {
 					this.addFailure(this.createFailure(start, end, '枚举的Doc注释的内容不得为空'));
-				} else if (!this.contentChinese(comment)) {
+				} else if (typeof comment == "string" && !this.contentChinese(comment)) {
 					this.addFailure(this.createFailure(start, end, '枚举的Doc注释的内容必须包含中文'));
 				}
 			}
@@ -104,7 +104,7 @@ class CommentWalker extends Lint.RuleWalker {
 				var comment = jsDoc.comment;
 				if (!comment) {
 					this.addFailure(this.createFailure(start, end, '接口的Doc注释的内容不得为空'));
-				} else if (!this.contentChinese(comment)) {
+				} else if (typeof comment == "string" && !this.contentChinese(comment)) {
 					this.addFailure(this.createFailure(start, end, '接口的Doc注释的内容必须包含中文'));
 				}
 				var ignoreMember: boolean = false;
@@ -164,7 +164,7 @@ class CommentWalker extends Lint.RuleWalker {
 				var comment = jsDoc.comment;
 				if (!comment) {
 					this.addFailure(this.createFailure(start, end, '类的Doc注释的内容不得为空'));
-				} else if (!this.contentChinese(comment)) {
+				} else if (typeof comment == "string" && !this.contentChinese(comment)) {
 					this.addFailure(this.createFailure(start, end, '类的Doc注释的内容必须包含中文'));
 				}
 				var ignoreMember: boolean = false;
